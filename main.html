@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实践性作业 · 化学成果展示</title>
+    <style>
+        :root {
+            --bg: #f7f9fc;
+            --card-bg: #ffffff;
+            --primary: #2c5ea8;
+            --primary-light: #4a80d4;
+            --accent: #c8953b;
+            --accent-light: #e0b860;
+            --text: #2a2a2a;
+            --text-light: #6b7280;
+            --border-light: #eef0f5;
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08);
+            --shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.1);
+            --radius-xl: 20px;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --font-sans: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', 'Noto Sans SC', sans-serif;
+            --font-serif: 'Noto Serif SC', 'STSong', 'Songti SC', 'SimSun', 'Times New Roman', serif;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+        #particleCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.7;
+        }
+        .bg-aurora {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(120px);
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0.35;
+            animation: auroraFloat 18s ease-in-out infinite;
+        }
+        .bg-aurora:nth-child(1) {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(180, 210, 255, 0.55) 0%, transparent 70%);
+            top: -15%;
+            left: -10%;
+        }
+        .bg-aurora:nth-child(2) {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(255, 215, 150, 0.4) 0%, transparent 70%);
+            top: 40%;
+            right: -12%;
+            animation-delay: -6s;
+            animation-duration: 22s;
+        }
+        .bg-aurora:nth-child(3) {
+            width: 550px;
+            height: 550px;
+            background: radial-gradient(circle, rgba(200, 220, 255, 0.45) 0%, transparent 70%);
+            bottom: -10%;
+            left: 30%;
+            animation-delay: -12s;
+            animation-duration: 20s;
+        }
+        .bg-aurora:nth-child(4) {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(255, 235, 190, 0.35) 0%, transparent 70%);
+            top: 55%;
+            left: -5%;
+            animation-delay: -3s;
+            animation-duration: 24s;
+        }
+        @keyframes auroraFloat {
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1);
+            }
+            25% {
+                transform: translate(60px, -50px) scale(1.08);
+            }
+            50% {
+                transform: translate(-30px, 40px) scale(0.94);
+            }
+            75% {
+                transform: translate(-50px, -30px) scale(1.05);
+            }
+        }
+        .main-container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px 28px 60px;
+        }
+        .header {
+            text-align: center;
+            padding: 50px 20px 20px;
+        }
+        .header h1 {
+            font-family: var(--font-serif);
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: #1a3a5c;
+            letter-spacing: 0.03em;
+            display: inline-block;
+            position: relative;
+        }
+        .header h1::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--accent), var(--primary-light), var(--accent), transparent);
+            border-radius: 2px;
+            animation: underlineShimmer 4s ease-in-out infinite;
+            background-size: 200% auto;
+        }
+        @keyframes underlineShimmer {
+            0%,
+            100% {
+                background-position: -200% center;
+            }
+            50% {
+                background-position: 200% center;
+            }
+        }
+        .view {
+            display: none;
+        }
+        .view.active {
+            display: block;
+        }
+        #overview .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 22px;
+            margin-top: 30px;
+        }
+        @media (max-width: 1200px) {
+            #overview .categories-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .header h1 {
+                font-size: 2.3rem;
+            }
+        }
+        @media (max-width: 768px) {
+            #overview .categories-grid {
+                grid-template-columns: 1fr;
+            }
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            .main-container {
+                padding: 10px 12px 40px;
+            }
+        }
+        .category-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-xl);
+            padding: 24px 22px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-light);
+            transition: all var(--transition);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            animation: cardFadeIn 0.7s ease-out forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .category-card:nth-child(1) {
+            animation-delay: 0.05s;
+        }
+        .category-card:nth-child(2) {
+            animation-delay: 0.12s;
+        }
+        .category-card:nth-child(3) {
+            animation-delay: 0.19s;
+        }
+        .category-card:nth-child(4) {
+            animation-delay: 0.26s;
+        }
+        .category-card:nth-child(5) {
+            animation-delay: 0.33s;
+        }
+        .category-card:nth-child(6) {
+            animation-delay: 0.4s;
+        }
+        .category-card:nth-child(7) {
+            animation-delay: 0.47s;
+        }
+        .category-card:nth-child(8) {
+            animation-delay: 0.54s;
+        }
+        @keyframes cardFadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .category-card:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-xl);
+            border-color: #d0d8e8;
+        }
+        .card-icon-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .card-icon-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: dotPulse 2s ease-in-out infinite;
+            flex-shrink: 0;
+        }
+        @keyframes dotPulse {
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(200, 149, 59, 0.6);
+            }
+            50% {
+                box-shadow: 0 0 0 10px rgba(200, 149, 59, 0);
+            }
+        }
+        .category-card h3 {
+            font-family: var(--font-serif);
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1a3a5c;
+        }
+        .card-stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 8px;
+            color: var(--text-light);
+            font-size: 0.82rem;
+        }
+        .stat-badge {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(44, 94, 168, 0.06);
+            padding: 3px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(44, 94, 168, 0.1);
+        }
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 18px;
+            padding: 8px 18px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-light);
+            border-radius: 30px;
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: var(--shadow-md);
+        }
+        .back-btn:hover {
+            background: #f0f4ff;
+            border-color: #c0d0f0;
+        }
+        .module-title {
+            font-family: var(--font-serif);
+            font-size: 2rem;
+            color: #1a3a5c;
+            margin-bottom: 16px;
+        }
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 16px;
+        }
+        .file-item {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            border: 1px solid var(--border-light);
+        }
+        .file-item:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+        .file-thumb {
+            width: 100%;
+            height: 120px;
+            background: #f0f4f8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        .file-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .file-thumb .icon-placeholder {
+            font-size: 2.2rem;
+            opacity: 0.7;
+        }
+        .file-name {
+            padding: 8px 10px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--text);
+            text-align: center;
+            word-break: break-word;
+        }
+        .preview-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.25s ease;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        .preview-container {
+            position: relative;
+            width: 96%;
+            height: 94%;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .preview-close {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            width: 36px;
+            height: 36px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .preview-close:hover {
+            background: rgba(0, 0, 0, 0.75);
+        }
+        .preview-content {
+            flex: 1;
+            width: 100%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f4f6f9;
+        }
+        .preview-content img,
+        .preview-content video,
+        .preview-content audio {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        .footer {
+            text-align: center;
+            padding: 30px 20px 10px;
+            color: var(--text-light);
+            font-size: 0.82rem;
+            letter-spacing: 0.04em;
+            position: relative;
+            z-index: 1;
+        }
+        .footer-line {
+            display: inline-block;
+            width: 60px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #c0c8d8, transparent);
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-aurora"></div>
+    <div class="bg-aurora"></div>
+    <div class="bg-aurora"></div>
+    <div class="bg-aurora"></div>
+    <canvas id="particleCanvas"></canvas>
+
+    <div class="main-container">
+        <header class="header"><h1>实践性作业</h1></header>
+
+        <div id="overview" class="view active">
+            <div class="categories-grid"></div>
+        </div>
+
+        <div id="detail" class="view">
+            <button class="back-btn" id="backBtn">← 返回总览</button>
+            <div class="module-title" id="detailTitle"></div>
+            <div class="file-grid" id="fileGrid"></div>
+        </div>
+
+        <footer class="footer">
+            <div class="footer-line"></div>
+            <p>化学学科实践性作业汇编 · 指导教师：崔老师 | 王老师 | 韩老师</p>
+        </footer>
+    </div>
+
+    <script>
+        (function() {
+            // 粒子背景
+            const canvas = document.getElementById('particleCanvas'),
+                ctx = canvas.getContext('2d');
+            let particles = [];
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = document.documentElement.scrollHeight;
+            }
+            resize();
+            window.addEventListener('resize', () => { resize();
+                initParticles(); });
+            class Particle {
+                constructor() { this.reset();
+                    this.y = Math.random() * canvas.height; }
+                reset() { this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * canvas.height;
+                    this.size = Math.random() * 3 + 1.2;
+                    this.speedX = (Math.random() - 0.5) * 0.35;
+                    this.speedY = (Math.random() - 0.5) * 0.35 - 0.1;
+                    this.opacity = Math.random() * 0.4 + 0.15;
+                    this.opacitySpeed = (Math.random() - 0.5) * 0.004;
+                    this.hue = Math.random() < 0.5 ? (Math.random() * 30 + 200) : (Math.random() * 25 + 35); }
+                update() {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    this.opacity += this.opacitySpeed;
+                    if (this.opacity > 0.55) this.opacitySpeed = -Math.abs(this.opacitySpeed);
+                    if (this.opacity < 0.08) this.opacitySpeed = Math.abs(this.opacitySpeed);
+                    if (this.x < -20) this.x = canvas.width + 20;
+                    if (this.x > canvas.width + 20) this.x = -20;
+                    if (this.y < -20) this.y = canvas.height + 20;
+                    if (this.y > canvas.height + 20) this.y = -20;
+                }
+                draw(ctx) { ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fillStyle = `hsla(${this.hue},55%,62%,${this.opacity})`;
+                    ctx.fill(); }
+            }
+
+            function initParticles() { particles = []; for (let i = 0; i < 50; i++) particles.push(new Particle()); }
+            initParticles();
+
+            function animate() { ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => { p.update();
+                    p.draw(ctx); });
+                requestAnimationFrame(animate); }
+            animate();
+            new ResizeObserver(() => resize()).observe(document.body);
+
+            // ========== 数据定义 ==========
+            const basePath = '实践性作业/';
+            const modules = {};
+
+            // AI三维互动模型
+            const aiHtmlFiles = [
+                { name: '碳60分子模型（臧文绮）', file: '2028届4班臧文绮碳60分子模型.html', type: 'html' },
+                { name: '备用模型', file: 'b.html', type: 'html' },
+                { name: '氯化钠 NaCl', file: 'NaCl.html', type: 'html' },
+                { name: '二氧化碳', file: '二氧化碳.html', type: 'html' },
+                { name: '二氧化碳（另一版本）', file: '二氧化碳yuanbao_html_20260106_fntW2H.html', type: 'html' },
+                { name: '双氧水', file: '双氧水.html', type: 'html' },
+                { name: '四氯化碳', file: '四氯化碳.html', type: 'html' },
+                { name: '干冰', file: '干冰.html', type: 'html' },
+                { name: '有机分子模型', file: '有机分子模型.html', type: 'html' },
+                { name: '氨气', file: '氨气.html', type: 'html' },
+                { name: '氨气（另一版本）', file: '氨气yuanbao_html_20260106_3rZ6Fr.html', type: 'html' },
+                { name: '氨气分子（赵博涵）', file: '氨气分子--赵博涵.html', type: 'html' },
+                { name: '水分子', file: '水.html', type: 'html' },
+                { name: '水分子（另一版本）', file: '水分子yuanbao_html_20260106_w7rjEk.html', type: 'html' },
+                { name: '水分子展示', file: '水分子展示.html', type: 'html' },
+                { name: '甲烷', file: '甲烷.html', type: 'html' },
+                { name: '苯分子模型', file: '苯分子模型.html', type: 'html' },
+                { name: '过氧化钠', file: '过氧化钠.html', type: 'html' },
+                { name: '金刚石', file: '金刚石.html', type: 'html' }
+            ];
+            const aiVideoFiles = [
+                { name: '碳60 3D模型', file: 'Al三维互动模型视频/3D碳60.mp4', type: 'mp4' },
+                { name: '氯化钠', file: 'Al三维互动模型视频/nacl.mp4', type: 'mp4' },
+                { name: '氨气 ①', file: 'Al三维互动模型视频/nh3.mp4', type: 'mp4' },
+                { name: '氨气 ②', file: 'Al三维互动模型视频/nh3 2.mp4', type: 'mp4' },
+                { name: '氨气 ③', file: 'Al三维互动模型视频/nh3 3.mp4', type: 'mp4' },
+                { name: '二氧化碳 ①', file: 'Al三维互动模型视频/二氧化碳.mp4', type: 'mp4' },
+                { name: '二氧化碳 ②', file: 'Al三维互动模型视频/二氧化碳2.mp4', type: 'mp4' },
+                { name: '双氧水', file: 'Al三维互动模型视频/双氧水.mp4', type: 'mp4' },
+                { name: '四氯化碳', file: 'Al三维互动模型视频/四氯化碳.mp4', type: 'mp4' },
+                { name: '干冰', file: 'Al三维互动模型视频/干冰.mp4', type: 'mp4' },
+                { name: '无机分子', file: 'Al三维互动模型视频/无机分子.mp4', type: 'mp4' },
+                { name: '水分子 ①', file: 'Al三维互动模型视频/水.mp4', type: 'mp4' },
+                { name: '水分子 ②', file: 'Al三维互动模型视频/水2.mp4', type: 'mp4' },
+                { name: '甲烷', file: 'Al三维互动模型视频/甲烷.mp4', type: 'mp4' },
+                { name: '苯', file: 'Al三维互动模型视频/苯.mp4', type: 'mp4' },
+                { name: '过氧化钠', file: 'Al三维互动模型视频/过氧化钠.mp4', type: 'mp4' },
+                { name: '金刚石', file: 'Al三维互动模型视频/金刚石.mp4', type: 'mp4' },
+                { name: '附加视频', file: '35e413d50af6ffa1d2755043dbf2d0c9.mp4', type: 'mp4' }
+            ];
+            const aiPptx = [{ name: 'AL三维互动模型.pptx', file: 'AL三维互动模型.pptx', type: 'pptx' }];
+            modules['AI三维互动模型'] = {
+                title: 'AI三维互动模型',
+                files: [
+                    ...aiHtmlFiles.map(f => ({ ...f, path: basePath + 'AI三维互动模型/' + f.file })),
+                    ...aiVideoFiles.map(f => ({ ...f, path: basePath + 'AI三维互动模型/' + f.file })),
+                    ...aiPptx.map(f => ({ ...f, path: basePath + 'AI三维互动模型/' + f.file }))
+                ]
+            };
+
+            // 教师录制文件（音频）
+            const teacherModules = {
+                '丁达尔效应': ['崔老师-丁达尔效应.mp4', '王老师-丁达尔效应.mp4', '韩老师-丁达尔效应.mp4'],
+                '物质分类': ['崔老师-物质分类.mp4', '王老师-物质分类.mp4', '韩老师-物质分类.mp4'],
+                '离子反应': ['崔老师-离子反应.mp4', '王老师-离子反应.mp4', '韩老师-离子反应.mp4'],
+                '错题讲解': ['崔老师-讲题.mp4', '王老师-讲题.mp4', '韩老师-讲题.mp4']
+            };
+            const teachers = ['崔老师', '王老师', '韩老师'];
+            for (const [modName, files] of Object.entries(teacherModules)) {
+                modules[modName] = {
+                    title: modName,
+                    files: files.map((f, i) => ({
+                        name: `${teachers[i]} · ${modName}`,
+                        path: basePath + modName + '/' + f,
+                        type: 'audio'
+                    }))
+                };
+            }
+
+            // 自制元素周期表 (图片99张 + pptx)
+            const ptImages = [];
+            const ptImageNames = [
+                "微信图片_20260105144829_3_3.jpg",
+                "微信图片_20260105144830_4_3.jpg", "微信图片_20260105144832_5_3.jpg", "微信图片_20260105144833_6_3.jpg",
+                "微信图片_20260105144834_7_3.jpg", "微信图片_20260105144835_8_3.jpg", "微信图片_20260105144837_9_3.jpg",
+                "微信图片_20260105144839_10_3.jpg", "微信图片_20260105144841_11_3.jpg", "微信图片_20260105144842_12_3.jpg",
+                "微信图片_20260105144844_13_3.jpg", "微信图片_20260105144845_14_3.jpg", "微信图片_20260105144847_15_3.jpg",
+                "微信图片_20260105144849_16_3.jpg", "微信图片_20260105144850_17_3.jpg", "微信图片_20260105144852_18_3.jpg",
+                "微信图片_20260105144854_19_3.jpg", "微信图片_20260105144856_20_3.jpg", "微信图片_20260105144857_21_3.jpg",
+                "微信图片_20260105144900_22_3.jpg", "微信图片_20260105144904_23_3.jpg", "微信图片_20260105144907_24_3.jpg",
+                "微信图片_20260105144910_25_3.jpg", "微信图片_20260105144912_26_3.jpg", "微信图片_20260105144913_27_3.jpg",
+                "微信图片_20260105144916_28_3.jpg", "微信图片_20260105144918_29_3.jpg", "微信图片_20260105144920_30_3.jpg",
+                "微信图片_20260105144922_31_3.jpg", "微信图片_20260105144924_32_3.jpg", "微信图片_20260105144926_33_3.jpg",
+                "微信图片_20260105144927_34_3.jpg", "微信图片_20260105144929_35_3.jpg", "微信图片_20260105144932_36_3.jpg",
+                "微信图片_20260105144935_37_3.jpg", "微信图片_20260105144937_38_3.jpg", "微信图片_20260105144939_39_3.jpg",
+                "微信图片_20260105144941_40_3.jpg", "微信图片_20260105144943_41_3.jpg", "微信图片_20260105144945_42_3.jpg",
+                "微信图片_20260105144947_43_3.jpg", "微信图片_20260105144948_44_3.jpg", "微信图片_20260105144950_45_3.jpg",
+                "微信图片_20260105144952_46_3.jpg", "微信图片_20260105144954_47_3.jpg", "微信图片_20260105144956_48_3.jpg",
+                "微信图片_20260105144958_49_3.jpg", "微信图片_20260105145000_50_3.jpg", "微信图片_20260105145002_51_3.jpg",
+                "微信图片_20260105145004_52_3.jpg", "微信图片_20260105145006_53_3.jpg", "微信图片_20260105145008_54_3.jpg",
+                "微信图片_20260105145010_55_3.jpg", "微信图片_20260105145011_56_3.jpg", "微信图片_20260105145013_57_3.jpg",
+                "微信图片_20260105145014_58_3.jpg", "微信图片_20260105145016_59_3.jpg", "微信图片_20260105145018_60_3.jpg",
+                "微信图片_20260105145020_61_3.jpg", "微信图片_20260105145022_62_3.jpg", "微信图片_20260105145024_63_3.jpg",
+                "微信图片_20260105145025_64_3.jpg", "微信图片_20260105145026_65_3.jpg", "微信图片_20260105145029_66_3.jpg",
+                "微信图片_20260105145030_67_3.jpg", "微信图片_20260105145032_68_3.jpg", "微信图片_20260105145034_69_3.jpg",
+                "微信图片_20260105145036_70_3.jpg", "微信图片_20260105145038_71_3.jpg", "微信图片_20260105145041_72_3.jpg",
+                "微信图片_20260105145043_73_3.jpg", "微信图片_20260105145044_74_3.jpg", "微信图片_20260105145046_75_3.jpg",
+                "微信图片_20260105145047_76_3.jpg", "微信图片_20260105145049_77_3.jpg", "微信图片_20260105145051_78_3.jpg",
+                "微信图片_20260105145053_79_3.jpg", "微信图片_20260105145055_80_3.jpg", "微信图片_20260105145232_81_3.jpg",
+                "微信图片_20260105145249_82_3.jpg", "微信图片_20260105145251_83_3.jpg", "微信图片_20260105145253_84_3.jpg",
+                "微信图片_20260105145255_85_3.jpg", "微信图片_20260105145257_86_3.jpg", "微信图片_20260105145259_87_3.jpg",
+                "微信图片_20260105145301_88_3.jpg", "微信图片_20260105145303_89_3.jpg", "微信图片_20260105145305_90_3.jpg",
+                "微信图片_20260105145308_91_3.jpg", "微信图片_20260105145310_92_3.jpg", "微信图片_20260105145312_93_3.jpg",
+                "微信图片_20260105145314_94_3.jpg", "微信图片_20260105145316_95_3.jpg", "微信图片_20260105145318_96_3.jpg",
+                "微信图片_20260105145320_97_3.jpg", "微信图片_20260105145322_98_3.jpg", "微信图片_20260105145324_99_3.jpg",
+                "微信图片_20260105145326_100_3.jpg", "微信图片_20260105145328_101_3.jpg"
+            ];
+            ptImageNames.forEach((fname, idx) => {
+                ptImages.push({
+                    name: `元素周期表 扫描件 ${idx + 1}`,
+                    path: basePath + '自制元素周期表/' + fname,
+                    type: 'jpg'
+                });
+            });
+            modules['自制元素周期表'] = {
+                title: '自制元素周期表',
+                files: [
+                    { name: '元素周期表展示.pptx', path: basePath + '自制元素周期表/元素周期表展示.pptx',
+                    type: 'pptx' },
+                    ...ptImages
+                ]
+            };
+
+            // 自制模型 (36张图片)
+            const modelImages = [];
+            const modelFileNames = [
+                "微信图片_20260104172434_247_48.jpg", "微信图片_20260104172436_248_48.jpg", "微信图片_20260104172438_249_48.jpg",
+                "微信图片_20260104172439_250_48.jpg", "微信图片_20260104172441_251_48.jpg", "微信图片_20260104172442_252_48.jpg",
+                "微信图片_20260104172444_253_48.jpg", "微信图片_20260104172445_254_48.jpg", "微信图片_20260104172447_255_48.jpg",
+                "微信图片_20260104172901_214_4.jpg", "微信图片_20260104172902_215_4.jpg", "微信图片_20260104172903_216_4.jpg",
+                "微信图片_20260104172905_217_4.jpg", "微信图片_20260104172906_218_4.jpg", "微信图片_20260104172907_219_4.jpg",
+                "微信图片_20260104172908_220_4.jpg", "微信图片_20260104172910_221_4.jpg", "微信图片_20260104172911_222_4.jpg",
+                "微信图片_20260104172912_223_4.jpg", "微信图片_20260104172913_224_4.jpg", "微信图片_20260104172914_225_4.jpg",
+                "微信图片_20260104172916_226_4.jpg", "微信图片_20260104172917_227_4.jpg", "微信图片_20260105114653_237_4.jpg",
+                "微信图片_20260105114659_238_4.jpg", "扫描全能王 2026-01-05 11.50_1.jpg", "扫描全能王 2026-01-05 11.50_2.jpg",
+                "扫描全能王 2026-01-05 11.50_3.jpg", "扫描全能王 2026-01-05 11.50_4.jpg", "扫描全能王 2026-01-05 11.50_5.jpg",
+                "扫描全能王 2026-01-05 11.50_6.jpg", "扫描全能王 2026-01-05 11.50_7.jpg", "扫描全能王 2026-01-05 11.50_8.jpg",
+                "扫描全能王 2026-01-05 11.50_9.jpg", "扫描全能王 2026-01-05 11.50_10.jpg", "扫描全能王 2026-01-05 11.50_11.jpg"
+            ];
+            modelFileNames.forEach((fname, idx) => {
+                modelImages.push({
+                    name: `自制模型 图片 ${idx + 1}`,
+                    path: basePath + '自制模型/' + fname,
+                    type: 'jpg'
+                });
+            });
+            modules['自制模型'] = { title: '自制模型', files: modelImages };
+
+            // 认识金属材料
+            modules['认识金属材料'] = {
+                title: '认识金属材料',
+                files: [
+                    { name: '生活中常见的金属材料', path: basePath + '认识金属材料/生活中常见的金属材料.mp4', type: 'mp4' },
+                    { name: '身边的金属材料', path: basePath + '认识金属材料/身边的金属材料.mp4', type: 'mp4' },
+                    { name: '身边的金属材料 ①', path: basePath + '认识金属材料/身边的金属材料1.mp4', type: 'mp4' }
+                ]
+            };
+
+            // ========== 渲染总览 ==========
+            const overviewGrid = document.querySelector('#overview .categories-grid');
+            const overviewView = document.getElementById('overview');
+            const detailView = document.getElementById('detail');
+            const detailTitle = document.getElementById('detailTitle');
+            const fileGrid = document.getElementById('fileGrid');
+            const backBtn = document.getElementById('backBtn');
+
+            function getTypeLabel(type) {
+                const map = {
+                    'html': '🌐 网页模型',
+                    'mp4': '🎬 视频',
+                    'audio': '🎧 音频',
+                    'jpg': '🖼️ 图片',
+                    'jpeg': '🖼️ 图片',
+                    'png': '🖼️ 图片',
+                    'pptx': '📊 演示文稿',
+                    'pdf': '📄 文档'
+                };
+                return map[type] || '📁 其他';
+            }
+
+            function renderOverview() {
+                overviewGrid.innerHTML = '';
+                Object.entries(modules).forEach(([key, mod]) => {
+                    const card = document.createElement('div');
+                    card.className = 'category-card';
+                    const counts = {};
+                    mod.files.forEach(f => { counts[f.type] = (counts[f.type] || 0) + 1; });
+                    let statsHtml = '';
+                    for (const [type, count] of Object.entries(counts)) {
+                        statsHtml += `<span class="stat-badge">${getTypeLabel(type)} ${count}</span>`;
+                    }
+                    card.innerHTML = `
+                        <div class="card-icon-row"><span class="card-icon-dot"></span><h3>${mod.title}</h3></div>
+                        <div class="card-stats">${statsHtml}</div>
+                    `;
+                    card.addEventListener('click', () => showDetail(key));
+                    overviewGrid.appendChild(card);
+                });
+            }
+            renderOverview();
+
+            // 卡片3D效果
+            document.querySelectorAll('.category-card').forEach(card => {
+                card.addEventListener('mousemove', e => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left,
+                        y = e.clientY - rect.top;
+                    const cx = rect.width / 2,
+                        cy = rect.height / 2;
+                    const rx = ((y - cy) / cy) * -3,
+                        ry = ((x - cx) / cx) * 3;
+                    card.style.transform =
+                        `translateY(-6px) perspective(800px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = 'translateY(0px) perspective(800px) rotateX(0deg) rotateY(0deg)';
+                });
+            });
+
+            function showDetail(moduleKey) {
+                const mod = modules[moduleKey];
+                if (!mod) return;
+                detailTitle.textContent = mod.title;
+                fileGrid.innerHTML = '';
+                mod.files.forEach(file => {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    const thumb = document.createElement('div');
+                    thumb.className = 'file-thumb';
+                    if (file.type === 'jpg' || file.type === 'jpeg' || file.type === 'png') {
+                        const img = document.createElement('img');
+                        img.src = file.path;
+                        img.alt = file.name;
+                        img.loading = 'lazy';
+                        img.onerror = function() { this.style.display = 'none';
+                            thumb.innerHTML = '<span class="icon-placeholder">🖼️</span>'; };
+                        thumb.appendChild(img);
+                    } else if (file.type === 'mp4') {
+                        thumb.innerHTML = '<span class="icon-placeholder">🎬</span>';
+                    } else if (file.type === 'audio') {
+                        thumb.innerHTML = '<span class="icon-placeholder">🎧</span>';
+                    } else if (file.type === 'html') {
+                        thumb.innerHTML = '<span class="icon-placeholder">🌐</span>';
+                    } else if (file.type === 'pptx') {
+                        thumb.innerHTML = '<span class="icon-placeholder">📊</span>';
+                    } else {
+                        thumb.innerHTML = '<span class="icon-placeholder">📄</span>';
+                    }
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'file-name';
+                    nameDiv.textContent = file.name;
+                    item.appendChild(thumb);
+                    item.appendChild(nameDiv);
+                    item.addEventListener('click', () => openPreview(file.path, file.type));
+                    fileGrid.appendChild(item);
+                });
+                overviewView.classList.remove('active');
+                detailView.classList.add('active');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            backBtn.addEventListener('click', () => {
+                detailView.classList.remove('active');
+                overviewView.classList.add('active');
+            });
+
+            function openPreview(path, type) {
+                if (type === 'pptx') {
+                    window.open(path, '_blank');
+                    return;
+                }
+                const overlay = document.createElement('div');
+                overlay.className = 'preview-overlay';
+                const container = document.createElement('div');
+                container.className = 'preview-container';
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'preview-close';
+                closeBtn.innerHTML = '&times;';
+                closeBtn.addEventListener('click', (e) => { e.stopPropagation();
+                    overlay.remove(); });
+                const content = document.createElement('div');
+                content.className = 'preview-content';
+                if (type === 'html') {
+                    const iframe = document.createElement('iframe');
+                    iframe.src = path;
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.style.border = 'none';
+                    content.appendChild(iframe);
+                } else if (type === 'mp4') {
+                    const video = document.createElement('video');
+                    video.src = path;
+                    video.controls = true;
+                    video.autoplay = true;
+                    video.style.maxWidth = '100%';
+                    video.style.maxHeight = '100%';
+                    content.appendChild(video);
+                } else if (type === 'audio') {
+                    const audio = document.createElement('audio');
+                    audio.src = path;
+                    audio.controls = true;
+                    audio.autoplay = true;
+                    audio.style.width = '80%';
+                    content.appendChild(audio);
+                } else if (type === 'jpg' || type === 'jpeg' || type === 'png') {
+                    const img = document.createElement('img');
+                    img.src = path;
+                    img.alt = path;
+                    content.appendChild(img);
+                } else {
+                    content.innerHTML =
+                        `<div style="padding:40px;text-align:center;"><p>暂不支持预览此文件类型</p><p style="margin-top:10px;font-size:0.9rem;">${path}</p></div>`;
+                }
+                container.appendChild(closeBtn);
+                container.appendChild(content);
+                overlay.appendChild(container);
+                overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+                document.body.appendChild(overlay);
+            }
+        })();
+    </script>
+</body>
+</html>
